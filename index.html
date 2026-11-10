@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Баҳо → Хол → Рейтинг (маҳаллӣ)</title>
+<style>
+:root{--bg:#f7f7f8;--card:#fff;--text:#1a1a1a;--muted:#6b6b6b;--accent:#007a3d;--accent2:#cc0000;--danger:#cc0000;--border:#e5e5e5;color-scheme:light;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121212;--card:#1e1e1e;--text:#f2f2f2;--muted:#9a9a9a;--border:#333;color-scheme:dark;}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+.wrap{max-width:520px;margin:0 auto;padding:14px;}
+h1{font-size:17px;margin:6px 0 2px;}
+.sub{color:var(--muted);font-size:12px;margin-bottom:10px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px;}
+.row{display:flex;gap:8px;align-items:center;}
+select{flex:1;padding:9px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;}
+.stud{border-bottom:1px solid var(--border);padding:10px 0;}
+.stud:last-child{border-bottom:none;}
+.sname{font-weight:600;font-size:14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.tot{color:var(--accent2);font-weight:700;}
+.grp{display:flex;gap:6px;align-items:center;margin-bottom:4px;}
+.glabel{width:62px;font-size:11px;color:var(--muted);}
+.gbtns{display:flex;gap:3px;}
+.gbtn{min-width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:12px;padding:0 4px;}
+.gbtn.sel{background:var(--accent2);color:#fff;border-color:var(--accent2);}
+.xbtn{width:22px;height:22px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--danger);font-size:12px;}
+input[type=text]{width:100%;padding:9px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;}
+button.main{padding:9px 12px;border-radius:9px;border:none;background:var(--accent2);color:#fff;font-weight:700;font-size:12px;}
+button.wa{width:100%;padding:11px;border-radius:10px;border:none;background:#25D366;color:#fff;font-weight:700;font-size:14px;margin-top:6px;}
+button.ghost{padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;}
+.addrow{display:flex;gap:6px;margin-top:8px;}
+textarea{width:100%;min-height:110px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);padding:9px;font-size:12px;font-family:inherit;}
+.rank-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.rank-row:last-child{border-bottom:none;}
+.pos{width:22px;font-weight:700;color:var(--muted);}
+.pos.top{color:var(--accent);} .pos.bottom{color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="height:4px;border-radius:3px;background:linear-gradient(90deg,#cc0000 33%,#ffffff 33%,#ffffff 66%,#007a3d 66%);margin-bottom:10px;"></div>
+  <h1>Баҳо → Хол → Рейтинг</h1>
+  <div class="sub">Маҳаллӣ — ҳама дар ҳамин дастгоҳ нигоҳ дошта мешавад · давра аз: <span id="periodInfo">—</span></div>
+ 
+  <div class="card">
+    <div class="row">
+      <select id="shiftSel" onchange="selGroup()"></select>
+      <select id="groupSel" onchange="renderGroup()"></select>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <select id="lessonSel" onchange="renderGroup()">
+        <option>Grammar</option><option>Listening</option><option>Writing</option><option>Reading</option><option>Speaking</option>
+      </select>
+      <input type="text" id="teacherName" placeholder="Номи муаллим" style="flex:1" oninput="renderGroup()">
+    </div>
+  </div>
+ 
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px;">
+      <strong>Хонандагон (имрӯз)</strong>
+    </div>
+    <div id="studList"></div>
+    <div class="addrow">
+      <input type="text" id="newName" placeholder="Номи хонандаи нав">
+      <button class="main" onclick="addStudent()">+</button>
+    </div>
+  </div>
+ 
+  <div class="card">
+    <strong>Рейтинги давра (2 ҳафта)</strong>
+    <div id="rankList" style="margin-top:6px;"></div>
+  </div>
+ 
+  <div class="card">
+    <strong>Паёми WhatsApp</strong>
+    <textarea id="waText" readonly></textarea>
+    <button class="wa" onclick="sendWA()">WhatsApp-ро кушо ва фирист</button>
+  </div>
+</div>
+ 
+<script>
+const SHIFTS=3, GROUPS_PER_SHIFT=5;
+const SHIFT_TIMES=['14:00–15:30','15:30–17:00','17:00–18:30'];
+const GROUP_NAMES=['Рӯдакӣ','Фирдавсӣ','Ибни Сино','Берунӣ','Хайём','Айнӣ','Ҷомӣ','Турсунзода','Сомонӣ','Темурмалик','Деваштич','Муқаннаъ','Ҳофиз','Бедил','Лоиқ'];
+let currentGroupId=null;
+ 
+function groupId(shift,g){return 's'+shift+'g'+g;}
+function groupName(shift,g){const idx=(shift-1)*GROUPS_PER_SHIFT+(g-1);return GROUP_NAMES[idx]||('Гурӯҳ '+g);}
+ 
+function store(gid){
+  try{ return JSON.parse(localStorage.getItem('baho_'+gid)||'null') || {students:[],periodStart:null}; }
+  catch(e){ return {students:[],periodStart:null}; }
+}
+function save(gid,data){
+  try{ localStorage.setItem('baho_'+gid, JSON.stringify(data)); }catch(e){}
+}
+ 
+function initSelectors(){
+  const sSel=document.getElementById('shiftSel');
+  sSel.innerHTML='';
+  for(let s=1;s<=SHIFTS;s++){const o=document.createElement('option');o.value=s;o.textContent=SHIFT_TIMES[s-1];sSel.appendChild(o);}
+  selGroup();
+}
+function selGroup(){
+  const shift=document.getElementById('shiftSel').value;
+  const gSel=document.getElementById('groupSel');
+  gSel.innerHTML='';
+  for(let g=1;g<=GROUPS_PER_SHIFT;g++){const o=document.createElement('option');o.value=groupId(shift,g);o.textContent=groupName(shift,g);gSel.appendChild(o);}
+  renderGroup();
+}
+ 
+function ensureSeed(data){
+  if(data.students.length===0){
+    for(let i=1;i<=12;i++){ data.students.push({id:'st'+i,name:'Хонанда '+i,total:0,dict:0,chk:0,hw:0}); }
+  }
+  if(!data.periodStart){ data.periodStart=new Date().toISOString().slice(0,10); }
+  return data;
+}
+ 
+function todayScore(s){ return (s.dict||0)+(s.chk||0)+(s.hw||0); }
+function projTotal(s){ return (s.total||0)+todayScore(s); }
+ 
+function renderGroup(){
+  currentGroupId=document.getElementById('groupSel').value;
+  const lesson=document.getElementById('lessonSel').value;
+  const isGrammar=lesson==='Grammar';
+  let data=ensureSeed(store(currentGroupId));
+  save(currentGroupId,data);
+  document.getElementById('periodInfo').textContent=data.periodStart||'—';
+  const DICT=[[0,'0'],[1,'1'],[3,'3'],[5,'5']];
+  const CHK = isGrammar ? [[1,'1'],[2,'2'],[3,'3'],[4,'4'],[5,'5']] : [[0,'0'],[1,'1'],[3,'3'],[5,'5']];
+  document.getElementById('studList').innerHTML=data.students.map(function(s){
+    const head='<div class="sname"><span data-id="'+s.id+'" data-rename="1" style="cursor:pointer;text-decoration:underline dotted;">'+s.name+'</span>'+
+        '<span style="display:flex;align-items:center;gap:6px;"><span class="tot">'+projTotal(s)+'</span>'+
+        '<button class="xbtn" data-id="'+s.id+'" data-abs="1" title="Ғоиб">Ғ</button>'+
+        '<button class="xbtn" data-id="'+s.id+'" data-del="1">✕</button></span></div>';
+    if(s.todayAbsent){
+      return '<div class="stud">'+head+'<div class="sub" style="margin:0 0 4px;">Имрӯз ғоиб қайд шуд — хол тағйир намеёбад</div></div>';
+    }
+    return '<div class="stud">'+head+
+      '<div class="grp"><span class="glabel">Луғат</span><span class="gbtns">'+DICT.map(function(p){return '<button class="gbtn '+(s.dict===p[0]?'sel':'')+'" data-id="'+s.id+'" data-field="dict" data-val="'+p[0]+'">'+p[1]+'</button>';}).join('')+'</span></div>'+
+      '<div class="grp"><span class="glabel">Чеклист</span><span class="gbtns">'+CHK.map(function(p){return '<button class="gbtn '+(s.chk===p[0]?'sel':'')+'" data-id="'+s.id+'" data-field="chk" data-val="'+p[0]+'">'+p[1]+'</button>';}).join('')+'</span></div>'+
+      '<div class="grp"><span class="glabel">Вазифа</span><span class="gbtns">'+[1,2,3,4,5].map(function(v){return '<button class="gbtn '+(s.hw===v?'sel':'')+'" data-id="'+s.id+'" data-field="hw" data-val="'+v+'">'+v+'</button>';}).join('')+'</span></div>'+
+    '</div>';
+  }).join('');
+  renderRank(data.students);
+  buildMessage(data.students,lesson);
+}
+ 
+function renderRank(list){
+  const sorted=list.slice().sort(function(a,b){return projTotal(b)-projTotal(a);});
+  document.getElementById('rankList').innerHTML=sorted.map(function(s,i){
+    const pos=i+1;
+    const cls=pos<=3?'top':(pos>sorted.length-3 && sorted.length>5?'bottom':'');
+    return '<div class="rank-row"><span class="pos '+cls+'">'+pos+'</span><span style="flex:1">'+s.name+'</span><span>'+projTotal(s)+'</span></div>';
+  }).join('');
+}
+ 
+function buildMessage(list,lesson){
+  const teacher=document.getElementById('teacherName').value||'—';
+  const today=new Date().toLocaleDateString('ru-RU');
+  const sorted=list.slice().sort(function(a,b){return projTotal(b)-projTotal(a);});
+  let msg='📚 '+lesson+' — '+today+'\n👩‍🏫 '+teacher+'\n\nВазифа/Луғат/Чеклист\n';
+  sorted.forEach(function(s,i){
+    const cup=i===0?'🏆 ':'';
+    if(s.todayAbsent){ msg+=cup+s.name+' — ғоиб  ['+(s.total||0)+']\n'; }
+    else { msg+=cup+s.name+'   '+(s.hw||0)+'/'+(s.dict||0)+'/'+(s.chk||0)+'  ['+projTotal(s)+']\n'; }
+  });
+  document.getElementById('waText').value=msg;
+}
+ 
+function addStudent(){
+  const inp=document.getElementById('newName');
+  const name=inp.value.trim();
+  if(!name) return;
+  let data=ensureSeed(store(currentGroupId));
+  data.students.push({id:'st'+Date.now(),name,total:0,dict:0,chk:0,hw:0});
+  save(currentGroupId,data);
+  inp.value='';
+  renderGroup();
+}
+function removeStudent(id){
+  if(!confirm('Хонандаро хазф кунем?')) return;
+  let data=ensureSeed(store(currentGroupId));
+  data.students=data.students.filter(function(s){return s.id!==id;});
+  save(currentGroupId,data);
+  renderGroup();
+}
+function renameStudent(id){
+  let data=ensureSeed(store(currentGroupId));
+  const s=data.students.find(function(x){return x.id===id;});
+  if(!s) return;
+  const nn=prompt('Номи нав:',s.name);
+  if(nn && nn.trim()){ s.name=nn.trim(); save(currentGroupId,data); renderGroup(); }
+}
+function setScore(id,field,val){
+  let data=ensureSeed(store(currentGroupId));
+  const s=data.students.find(function(x){return x.id===id;});
+  if(!s) return;
+  s[field]=val;
+  save(currentGroupId,data);
+  renderGroup();
+}
+function toggleAbsent(id){
+  let data=ensureSeed(store(currentGroupId));
+  const s=data.students.find(function(x){return x.id===id;});
+  if(!s) return;
+  s.todayAbsent=!s.todayAbsent;
+  if(s.todayAbsent){ s.dict=0; s.chk=0; s.hw=0; }
+  save(currentGroupId,data);
+  renderGroup();
+}
+function sendWA(){
+  const text=document.getElementById('waText').value;
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
+  let data=ensureSeed(store(currentGroupId));
+  data.students.forEach(function(s){ if(!s.todayAbsent){ s.total=projTotal(s); } s.dict=0; s.chk=0; s.hw=0; s.todayAbsent=false; });
+  save(currentGroupId,data);
+  renderGroup();
+}
+ 
+document.addEventListener('click', function(e){
+  const t=e.target.closest('[data-id]');
+  if(!t) return;
+  if(t.dataset.rename){ renameStudent(t.dataset.id); return; }
+  if(t.dataset.del){ removeStudent(t.dataset.id); return; }
+  if(t.dataset.abs){ toggleAbsent(t.dataset.id); return; }
+  if(t.dataset.field){ setScore(t.dataset.id, t.dataset.field, parseInt(t.dataset.val,10)); }
+});
+ 
+initSelectors();
+</script>
+</body>
+</html>
+ 
